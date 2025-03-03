@@ -6,7 +6,6 @@ Created on Wed Apr 10 09:57:49 2019
 
 import torch.nn as nn
 import math
-import torch.utils.model_zoo as model_zoo
 
 
 class DSC(nn.Module):
