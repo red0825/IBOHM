@@ -1,4 +1,5 @@
 import os
+import argparse
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -8,7 +9,6 @@ from resnet import ResNet, Bottleneck
 from utils import *
 
 # Model training function
-# Trains a ResNet classifier using domain-separated NIfTI slice images.
 def train_model(model_save_folder, model, dataloader, criterion, optimizer, num_epochs=25, patience=100):
     best_loss = float('inf')
     best_model_weights = None
@@ -17,7 +17,7 @@ def train_model(model_save_folder, model, dataloader, criterion, optimizer, num_
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
-        
+
         for inputs, labels in dataloader:
             inputs, labels = inputs.cuda(), labels.cuda()
             optimizer.zero_grad()
@@ -25,23 +25,24 @@ def train_model(model_save_folder, model, dataloader, criterion, optimizer, num_
             loss.backward()
             optimizer.step()
             running_loss += loss.item() * inputs.size(0)
-        
+
         epoch_loss = running_loss / len(dataloader.dataset)
         print(f'Epoch {epoch}/{num_epochs - 1}, Loss: {epoch_loss:.4f}')
-        
+
         if epoch_loss < best_loss:
             best_loss = epoch_loss
             best_model_weights = model.state_dict()
             early_stop_counter = 0
         else:
             early_stop_counter += 1
-        
+
         if early_stop_counter >= patience:
             print(f'Early stopping at epoch {epoch} with best loss: {best_loss:.4f}')
             break
-    
+
     if best_model_weights is not None:
         model.load_state_dict(best_model_weights)
+        os.makedirs(model_save_folder, exist_ok=True)
         torch.save(model.state_dict(), os.path.join(model_save_folder, 'best_model.pth'))
         print(f'Best model saved with loss: {best_loss:.4f}')
 
@@ -65,8 +66,13 @@ def main(data_path, model_save_folder):
 
     train_model(model_save_folder, model, dataloader, criterion, optimizer, num_epochs=100)
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Train a ResNet-based classifier on domain-separated NIfTI images.")
+    parser.add_argument('--data_path', type=str, required=True, help="Path to training dataset")
+    parser.add_argument('--model_save_folder', type=str, required=True, help="Directory to save trained model weights")
+    return parser.parse_args()
+
 if __name__ == '__main__':
+    args = parse_args()
     set_random_seed(42)
-    model_save_folder = 'model_save_folder'  # Directory to save trained model weights
-    data_path = 'data_folder'  # Directory containing domain-separated NIfTI datasets
-    main(data_path, model_save_folder)
+    main(args.data_path, args.model_save_folder)
