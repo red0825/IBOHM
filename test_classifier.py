@@ -1,4 +1,5 @@
 import os
+import argparse
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -24,7 +25,7 @@ def evaluate_model(model, dataloader, criterion):
             inputs, labels = inputs.cuda(), labels.cuda()
             outputs = model(inputs)[1]  # Extract classification output
             loss = criterion(outputs, labels)
-            
+
             running_loss += loss.item() * inputs.size(0)
             _, predicted = torch.max(outputs, 1)  # Get predicted class index
             total += labels.size(0)
@@ -39,16 +40,19 @@ def evaluate_model(model, dataloader, criterion):
 def test_model(data_path, model_save_folder):
     dataset = NiftiDataset(root_dir=data_path, transform=None)  # Load test dataset
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=4, pin_memory=True)
-    
+
     model = load_model(os.path.join(model_save_folder, 'best_model.pth'), 2)  # Load trained model
     criterion = nn.CrossEntropyLoss()  # Define loss function
-    
+
     evaluate_model(model, dataloader, criterion)  # Perform evaluation
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Test the trained classifier on a dataset.")
+    parser.add_argument('--model_save_folder', type=str, required=True, help="Path to saved model weights")
+    parser.add_argument('--data_path', type=str, required=True, help="Path to test dataset")
+    return parser.parse_args()
+
 if __name__ == '__main__':
+    args = parse_args()
     set_random_seed(42)  # Ensure reproducibility
-    
-    model_save_folder = 'model_save_folder'  # Path to saved model weights
-    data_path = 'test_data_set_folder'  # Path to test dataset
-    
-    test_model(data_path, model_save_folder)  # Run model testing
+    test_model(args.data_path, args.model_save_folder)  # Run model testing
